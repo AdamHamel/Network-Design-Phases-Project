@@ -1,0 +1,99 @@
+from socket import *
+import math
+import time
+import numpy as np
+import cv2 as cv
+import tkinter as tk
+from PIL import Image, ImageTk
+import binascii
+import socket
+import struct
+import sys
+import hashlib
+import base64
+from struct import *
+
+serverName = '10.0.0.78'  # Server Address, IP4 Address
+serverPort = 12345
+clientSocket = socket(AF_INET, SOCK_DGRAM)
+
+sendFile = []  # Declares the variable that will be used to send the image
+
+ACK = 0
+SEQ = 0
+
+#######################################GUI CONFIG#############################################
+
+window = tk.Tk()
+
+myLabel = tk.Label(
+    text='Enter Image Name From Directory Folder',
+    height=10,
+    width=50,
+    background="white",
+    foreground="black"
+)
+window.title("Image Transfer GUI")
+myLabel.pack()
+
+entry = tk.Entry(
+    bg="white",
+    fg="black",
+    borderwidth=5,
+    width=20,
+)
+entry.pack()
+
+def button_Clicked():
+    global ACK, SEQ
+    def make_packets():
+        userFile = entry.get()
+        file = open(userFile, 'rb')
+        inputFile = file.read()
+
+        numPackets = math.floor(len(inputFile) / 1024)  # Determines how many packets needed to send file
+        if len(inputFile) % 1024 != 0:
+            numPackets = numPackets + 1
+
+        for i in range(numPackets):  # Creates list of
+            bytes_s = inputFile[i * 1024:(i + 1) * 1024]
+            sendFile.append(bytes_s)
+
+        clientSocket.sendto(str(numPackets).encode(), (serverName, serverPort))
+
+    make_packets()
+
+    for data in range(len(sendFile)):
+        
+        ##################  CHECKSUM  ####################
+        packed_data=pack('ii 1024s', ACK,SEQ,sendFile[1])
+        checksum= hashlib.md5(packed_data).hexdigest().encode('utf-8')
+        print(checksum)
+        ##################  CHECKSUM  ####################
+        
+        message = pack(f'ii {len(sendFile[data])}s {len(checksum)}s', ACK, SEQ, checksum,sendFile[data])
+        clientSocket.sendto(message, (serverName, serverPort))
+
+        if ACK == 0:
+            ACK = 1
+        else:
+            ACK = 0
+
+        if SEQ == 0:
+            SEQ = 1
+        else:
+            SEQ = 0
+
+    clientSocket.close()
+
+button = tk.Button(
+    text="Import",
+    width=10,
+    height=1,
+    bg="white",
+    fg="black",
+    command=button_Clicked
+)
+button.pack()
+
+window.mainloop()
