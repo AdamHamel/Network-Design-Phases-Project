@@ -45,6 +45,8 @@ entry = tk.Entry(
 )
 entry.pack()
 
+#######################################GUI CONFIG#############################################
+
 def button_Clicked():
     global ACK, SEQ
     def make_packets():
@@ -67,12 +69,12 @@ def button_Clicked():
     for data in range(len(sendFile)):
         
         ##################  CHECKSUM  ####################
-        packed_data=pack('ii 1024s', ACK,SEQ,sendFile[1])
+        packed_data=pack(f'ii {len(sendFile[data])}s', ACK,SEQ,sendFile[data])
         checksum= hashlib.md5(packed_data).hexdigest().encode('utf-8')
-        # print(checksum)
+        print("Client side checksum:", checksum)
         ##################  CHECKSUM  ####################
         
-        message = pack(f'ii {len(sendFile[data])}s {len(checksum)}s', ACK, SEQ, checksum,sendFile[data])
+        message = pack(f'ii {len(checksum)}s {len(sendFile[data])}s ', ACK, SEQ, checksum,sendFile[data])
         clientSocket.sendto(message, (serverName, serverPort))
 
         if ACK == 0:
