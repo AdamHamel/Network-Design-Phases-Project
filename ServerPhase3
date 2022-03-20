@@ -43,16 +43,25 @@ while True:
     ######## RECIEVE AND UNPACK DATA #########
     counter = counter + 1
     message, clientAddress = serverSocket.recvfrom(2048)
-    ACK, SEQ, data, checksum = unpack(f'ii 32s {len(message[8:])}s', message)
+    ACK, SEQ, checksum, data = unpack(f'ii 32s {len(message[40:])}s', message)
     ######## RECIEVE AND UNPACK DATA #########
-    print(checksum)
-    # print(ACK)
-    # print(SEQ)
-    # print(data)
-    # print(f'{counter} = {data}')
+    
 
 
-    receivedFile.append(message)
+    ########### Create serverside checksum to compare ###########
+    packed_data=pack(f'ii {len(data)}s', ACK,SEQ,data)
+    serverchecksum= hashlib.md5(packed_data).hexdigest().encode('utf-8')
+    print("Server side checksum:", serverchecksum)
+    ########### Create serverside checksum to compare ###########
+
+    if checksum==serverchecksum:
+         print("Packet ", counter, "has a matching checksum")
+
+    else:
+         print ("Packet ", counter, "does NOT have a matching checksum")
+
+
+    receivedFile.append(data)
     receiving = receiving + 1
 
     if receiving == size:
