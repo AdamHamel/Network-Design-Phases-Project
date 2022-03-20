@@ -1,4 +1,18 @@
 from socket import *
+import math
+import time
+import numpy as np
+import cv2 as cv
+import tkinter as tk
+from PIL import Image, ImageTk
+import binascii
+import socket
+import struct
+import sys
+import hashlib
+import base64
+from struct import *
+from socket import *
 from struct import *
 import math
 import time
@@ -7,6 +21,7 @@ import cv2 as cv
 import tkinter as tk
 from PIL import Image, ImageTk
 import datetime
+
 
 serverPort = 12345
 
@@ -31,10 +46,10 @@ while True:
     ACK, SEQ, data, checksum = unpack(f'ii 32s {len(message[8:])}s', message)
     ######## RECIEVE AND UNPACK DATA #########
     print(checksum)
-    print(ACK)
-    print(SEQ)
-    print(data)
-    print(f'{counter} = {data}')
+    # print(ACK)
+    # print(SEQ)
+    # print(data)
+    # print(f'{counter} = {data}')
 
 
     receivedFile.append(message)
