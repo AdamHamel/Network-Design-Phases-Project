@@ -11,92 +11,68 @@ import struct
 import sys
 import hashlib
 import base64
+import random
 from struct import *
 import datetime
+from makePackets import makePackets
 
-serverName = '10.0.0.78'  # Server Address, IP4 Address
-serverPort = 12345
-clientSocket = socket.socket(AF_INET, SOCK_DGRAM)
+def clientSide(inputData, cRate):
+    corruptRate = float(cRate)
 
-sendFile = []  # Declares the variable that will be used to send the image
+    def ackCorruption(rate, ackValue):
+        newACK = ackValue
+        if random.random() <= rate:
+            newACK = random.randint(2, 9)
 
-ACK = 0
-SEQ = 0
+        return newACK
 
-#######################################GUI CONFIG#############################################
+    serverName = '10.0.0.102'  # Server Address, IP4 Address
+    serverPort = 12345
+    clientSocket = socket.socket(AF_INET, SOCK_DGRAM)
 
-window = tk.Tk()
+    SEQ = 0
 
-myLabel = tk.Label(
-    text='Enter Image Name From Directory Folder',
-    height=10,
-    width=50,
-    background="white",
-    foreground="black"
-)
-window.title("Image Transfer GUI")
-myLabel.pack()
+    size, data = makePackets(inputData, 1024)
 
-entry = tk.Entry(
-    bg="white",
-    fg="black",
-    borderwidth=5,
-    width=20,
-)
-entry.pack()
+    clientSocket.sendto(str(size).encode(), (serverName, serverPort))
 
-#######################################GUI CONFIG#############################################
+    for packets in range(len(data)):
 
-def button_Clicked():
-    global ACK, SEQ
-    def make_packets():
-        userFile = entry.get()
-        file = open(userFile, 'rb')
-        inputFile = file.read()
-
-        numPackets = math.floor(len(inputFile) / 1024)  # Determines how many packets needed to send file
-        if len(inputFile) % 1024 != 0:
-            numPackets = numPackets + 1
-
-        for i in range(numPackets):  # Creates list of
-            bytes_s = inputFile[i * 1024:(i + 1) * 1024]
-            sendFile.append(bytes_s)
-
-        clientSocket.sendto(str(numPackets).encode(), (serverName, serverPort))
-
-    make_packets()
-
-    for data in range(len(sendFile)):
-        
         ##################  CHECKSUM  ####################
-        packed_data=pack(f'ii {len(sendFile[data])}s', ACK,SEQ,sendFile[data])
-        checksum= hashlib.md5(packed_data).hexdigest().encode('utf-8')
-        print("Client side checksum:", checksum)
+        packed_data = pack(f'i {len(data[packets])}s', SEQ, data[packets])
+        checksum = hashlib.md5(packed_data).hexdigest().encode('utf-8')
         ##################  CHECKSUM  ####################
-        
-        message = pack(f'ii {len(checksum)}s {len(sendFile[data])}s ', ACK, SEQ, checksum,sendFile[data])
+
+        message = pack(f'i {len(checksum)}s {len(data[packets])}s', SEQ, checksum, data[packets])
         clientSocket.sendto(message, (serverName, serverPort))
 
-        if ACK == 0:
-            ACK = 1
-        else:
-            ACK = 0
+        ackPacket, serverAddress = clientSocket.recvfrom(2048)
+        serverSEQ, sACK = unpack('ii', ackPacket)
 
-        if SEQ == 0:
-            SEQ = 1
+        sACK = ackCorruption(corruptRate, sACK)
+        if sACK == SEQ and serverSEQ == SEQ:
+            print("Client: Positive")
         else:
-            SEQ = 0
+            while True:
+                if sACK > 1:
+                    print("Client: Corrupted ACK")
+                else:
+                    print("Client: Negative, Sending New packet")
 
+                message = pack(f'i {len(checksum)}s {len(data[packets])}s', SEQ, checksum, data[packets])
+                clientSocket.sendto(message, (serverName, serverPort))
+
+                ackPacket, serverAddress = clientSocket.recvfrom(2048)
+                serverSEQ, sACK = unpack('ii', ackPacket)
+                sACK = ackCorruption(corruptRate, sACK)
+
+                if SEQ != serverSEQ and sACK < 2:
+                    print("Client: Duplicate Packet. Sending Next Packet")
+                    break
+                if sACK == SEQ:
+                    print("Client: Corrupt Packet Corrected")
+                    break
+
+        SEQ = int(not SEQ)
     clientSocket.close()
 
-button = tk.Button(
-    text="Import",
-    width=10,
-    height=1,
-    bg="white",
-    fg="black",
-    command=button_Clicked
-)
-button.pack()
-
-window.mainloop()
