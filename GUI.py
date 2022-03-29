@@ -60,27 +60,45 @@ corruptEntry.pack()
 r = IntVar()
 Radiobutton(window, text="Option 1, No corruption", variable=r, value=0).pack()
 Radiobutton(window, text="Option 2, ACK corruption", variable=r, value=1).pack()
-Radiobutton(window, text="Option 3, Packet loss/Corruption", variable=r, value=2).pack()
+Radiobutton(window, text="Option 3, Data Corruption", variable=r, value=2).pack()
+Radiobutton(window, text="Option 4, Data Loss", variable=r, value=3).pack()
+Radiobutton(window, text="Option 5, ACK Loss", variable=r, value=4).pack()
 
 def openImage(value):
-    global my_img, packetCorrupt, ackCorrupt
+    global my_img, packetCorrupt, ackCorrupt, pLossCorrupt, ackLoss
     start = time.perf_counter()
 
     data = dataEntry.get()
     match value:
         case 0:
             packetCorrupt = 0
+            pLossCorrupt = 0
             ackCorrupt = 0
+            ackLoss = 0
         case 1:
             packetCorrupt = 0
+            pLossCorrupt = 0
+            ackLoss = 0
             ackCorrupt = corruptEntry.get()
         case 2:
             packetCorrupt = corruptEntry.get()
+            pLossCorrupt = 0
             ackCorrupt = 0
+            ackLoss = 0
+        case 3:
+            packetCorrupt = 0
+            pLossCorrupt = corruptEntry.get()
+            ackCorrupt = 0
+            ackLoss = 0
+        case 4:
+            packetCorrupt = 0
+            pLossCorrupt = 0
+            ackCorrupt = 0
+            ackLoss = corruptEntry.get()
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        client = executor.submit(clientSide, data, ackCorrupt)
-        server = executor.submit(serverSide, packetCorrupt)
+        client = executor.submit(clientSide, data, ackCorrupt, pLossCorrupt)
+        server = executor.submit(serverSide, packetCorrupt, ackLoss)
 
     finish = time.perf_counter()
     total_time = round(finish - start, 5)
